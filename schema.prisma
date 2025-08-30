@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model businessprofile {
+  id                 String               @id
+  businessName       String
+  description        String?
+  category           String
+  location           String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  userId             String               @unique(map: "BusinessProfile_userId_key")
+  user               user                 @relation(fields: [userId], references: [id], map: "BusinessProfile_userId_fk")
+  forumpost          forumpost[]
+  marketplacelisting marketplacelisting[]
+}
+
+model conversation {
+  id        String    @id @default(cuid())
+  deleted   Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  message[]
+  users     user[]    @relation("userconversations")
+}
+
+model forumcomment {
+  id        String    @id
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  authorId  String
+  postId    String
+
+  user      user      @relation(fields: [authorId], references: [id], map: "ForumComment_authorId_fk")
+  forumpost forumpost @relation(fields: [postId], references: [id], map: "ForumComment_postId_fk")
+
+  @@index([authorId], map: "ForumComment_authorId_idx")
+  @@index([postId], map: "ForumComment_postId_idx")
+}
+
+model forumpost {
+  id              String          @id
+  title           String
+  content         String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime
+  authorId        String
+
+  forumcomment    forumcomment[]
+  businessprofile businessprofile @relation(fields: [authorId], references: [id], map: "ForumPost_authorId_fk")
+
+  @@index([authorId], map: "ForumPost_authorId_idx")
+}
+
+model marketplacelisting {
+  id              String          @id
+  title           String
+  description     String
+  price           Float
+  category        String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @default(now())
+  authorId        String
+
+  businessprofile businessprofile @relation(fields: [authorId], references: [id], map: "MarketplaceListing_authorId_fk")
+
+  @@index([authorId], map: "MarketplaceListing_authorId_idx")
+}
+
+model message {
+  id             String        @id @default(cuid())
+  content        String
+  deleted        Boolean       @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  authorId       String
+  conversationId String?
+
+  user           user          @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "Message_authorId_fk")
+  conversation   conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([authorId], map: "Message_authorId_idx")
+  @@index([conversationId], map: "Message_conversationId_idx")
+}
+
+model user {
+  id              String           @id
+  name            String
+  email           String           @unique(map: "User_email_key")
+  password        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  businessprofile businessprofile?
+  forumcomment    forumcomment[]
+  messages        message[]
+  conversations   conversation[]   @relation("userconversations")
+}
